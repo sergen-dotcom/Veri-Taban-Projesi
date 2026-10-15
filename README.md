@@ -48,13 +48,13 @@ Sistem, sürdürülebilirlik ve ölçeklenebilirlik ilkeleri doğrultusunda **Ka
 
 ## 🗄️ Veritabanı Mimarisi
 
-Sistem toplam **14 tablodan** oluşmakta olup, tablo ilişkileri ve bağımlılık sırasına göre **5 ana grupta** modellenmiştir:
+Sistem toplam **15 tablodan** oluşmakta olup, tablo ilişkileri ve bağımlılık sırasına göre **5 ana grupta** modellenmiştir:
 
 | Grup Sırası | Kategori | Tablolar |
 | :---: | :--- | :--- |
 | **1** | **Temel Tanım Tabloları** | `OdaTipi`, `Kullanici`, `EkHizmet` |
 | **2** | **İkincil Tablolar** | `HizmetEnvanter`, `Misafir`, `Personel` |
-| **3** | **Ana Operasyon Tabloları** | `Oda`, `SezonFiyati`, `Rezervasyon`, `Konaklama` |
+| **3** | **Ana Operasyon & Fiyatlandırma** | `Oda`, `SezonFiyati`, `OzelGun`, `Rezervasyon`, `Konaklama` |
 | **4** | **Hizmet, Ödeme ve Görev Tabloları** | `KonaklamaHizmeti`, `Odeme`, `TemizlikGorevleri` |
 | **5** | **Denetim Kaydı (Audit Log)** | `IslemLog` |
 
@@ -70,7 +70,7 @@ Veritabanı tabloları arasındaki ilişkileri ve anahtar yapılarını göstere
 
 ## 🚀 Kurulum ve Çalıştırma
 
-Veritabanını ve tabloları oluşturan ana SQL betiği `Data_base/01_schema.sql` dizininde yer almaktadır.
+Veritabanı şeması ve test verileri `Data_base/` dizini altında yer almaktadır.
 
 ### 1. Docker ile MySQL Veritabanını Başlatma
 Aşağıdaki komutu çalıştırarak MySQL 8 konteynerini ayağa kaldırın:
@@ -83,14 +83,30 @@ docker run -d \
   mysql:8
 ```
 
-### 2. SQL Şema Betiğini Çalıştırma
-MySQL istemcisine bağlandıktan sonra şema dosyasını içe aktarın:
+### 2. SQL Şema ve Tabloları Oluşturma
+MySQL istemcisine bağlandıktan sonra şema dosyasını çalıştırın:
 
 ```sql
 SOURCE Data_base/01_schema.sql;
 ```
 
-*(Alternatif olarak doğrudan terminal üzerinden Docker konteynerine aktarmak isterseniz şu komutu kullanabilirsiniz:)*
-```bash
-docker exec -i hotel-db mysql -uroot -phakanaydin123 < Data_base/01_schema.sql
+### 3. Örnek Test Verilerini Yükleme
+Gerçekçi otel operasyon simülasyonu ve test rezervasyonlarını yüklemek için:
+
+```sql
+SOURCE Data_base/02_data.sql;
 ```
+
+---
+
+## 🔑 Test Kullanıcıları ve Kimlik Bilgileri
+
+Sistemi test etmek için `02_data.sql` ile yüklenen tüm kullanıcıların varsayılan şifresi **`password`** olarak belirlenmiş ve veritabanında BCrypt algoritması ile güvenli şekilde hashlenmiştir.
+
+| Rol | E-Posta | Şifre | Açıklama |
+|---|---|---|---|
+| **Yönetici (Admin)** | `ahmet.celik@otel.com` | `password` | Genel Müdür (Tüm sistem yetkileri) |
+| **Resepsiyonist** | `selin.aksoy@otel.com` | `password` | Check-in, check-out ve rezervasyon işlemleri |
+| **Kat Hizmetleri** | `fatma.sahin@otel.com` | `password` | Temizlik görev takibi |
+| **Misafir (VIP)** | `hakan.aydin@ktu.edu.tr` | `password` | Platin VIP müşteri (6161 puan) |
+| **Misafir (Standart)** | `ayse.demir@gmail.com` | `password` | Standart müşteri |

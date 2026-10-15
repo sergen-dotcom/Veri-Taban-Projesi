@@ -142,3 +142,26 @@ CREATE TABLE IslemLog (
     yeni_deger TEXT,
     zaman_damgasi TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
+
+-- ÖZEL GÜN TABLOSU **
+
+CREATE TABLE OzelGun(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    etkinlik_adi VARCHAR(100) NOT NULL,
+    baslangic_tarihi DATE NOT NULL,
+    bitis_tarihi DATE NOT NULL,
+    fiyat_carpani DECIMAL(3,2) DEFAULT  1.20,
+    aciklama VARCHAR(255)
+) ENGINE=InnoDB;
+
+CREATE INDEX idx_rez_oda_tarih ON Rezervasyon (oda_id,giris_tarihi, cikis_tarihi);
+
+CREATE INDEX idx_rez_durum ON Rezervasyon (durum);
+
+CREATE INDEX idx_oda_durum ON Oda (durum);
+
+CREATE INDEX idx_sezon_tip_tarih ON SezonFiyati (oda_tipi_id, baslangic_tarihi, bitis_tarihi);
+
+CREATE INDEX idx_temizlik_durum ON TemizlikGorevleri (durum, oncelik);
+
+CREATE INDEX idx_ozel_gun_tarih ON OzelGun (baslangic_tarihi, bitis_tarihi);
