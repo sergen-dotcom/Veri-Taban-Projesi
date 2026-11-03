@@ -151,7 +151,12 @@ INSERT INTO Misafir (kullanici_id, tc_pasaport, telefon, dogum_tarihi, ad, soyad
                                                                                                    (52, '45278695149', '05307152609', '1995-01-08', 'Taylan',      'Antalyalı',  150),
                                                                                                    (53, '56389706250', '05318263710', '1998-01-25', 'Berkan',      'Kutlu',      175),
                                                                                                    (54, '67490817361', '05329374821', '1999-12-08', 'Halil',       'Dervişoğlu', 160),
-                                                                                                   (55, '78501928472', '05330485932', '2000-07-07', 'Yunus',       'Akgün',      320);
+                                                                                                   (55, '78501928472', '05330485932', '2000-07-07', 'Yunus',       'Akgün',      320),
+                                                                                                   (56, '89612039583', '05341596043', '1996-09-20', 'Emin',        'Bayram',     70),
+                                                                                                   (57, '90723140694', '05352607154', '2002-04-21', 'Kazımcan',    'Karataş',    105),
+                                                                                                   (58, '11834251705', '05363718265', '2003-07-24', 'Metehan',     'Baltacı',    60),
+                                                                                                   (59, '22945362816', '05374829376', '2001-02-03', 'Ali Turap',   'Bülbül',     40),
+                                                                                                   (60, '33056473927', '05385930487', '2003-05-31', 'Hamza',       'Akman',      85);
 -- 5. ODALAR (25 Adet - 5 Kat)
 INSERT INTO Oda (oda_no, kat, oda_tipi_id, durum) VALUES
 -- Kat 1: Standart Oda (Oda Tipi: 1)
@@ -231,8 +236,8 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (31, 1, '2026-08-02', '2026-08-07', 2, 2200.00, 'tamamlandı'),
 (37, 1, '2026-09-01', '2026-09-06', 2, 2200.00, 'tamamlandı'),
 (1,  1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 3 DAY), 2, 1500.00, 'onaylı'), -- Bugün giriş yapacak
-(43, 1, '2026-11-05', '2026-11-10', 2, 1500.00, 'onaylı'),
-(49, 1, '2026-11-15', '2026-11-20', 2, 1500.00, 'beklemede'),
+(43, 1, DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 10 DAY), 2, 1500.00, 'onaylı'),
+(49, 1, DATE_ADD(CURDATE(), INTERVAL 12 DAY), DATE_ADD(CURDATE(), INTERVAL 17 DAY), 2, 1500.00, 'beklemede'),
 
 -- Oda 2 (102 - Standart - Şu an DOLU)
 (2,  2, '2026-06-03', '2026-06-07', 2, 2200.00, 'tamamlandı'),
@@ -242,8 +247,8 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (26, 2, '2026-08-05', '2026-08-10', 2, 2200.00, 'tamamlandı'),
 (32, 2, '2026-09-03', '2026-09-08', 2, 2200.00, 'tamamlandı'),
 (2,  2, DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), 2, 1500.00, 'onaylı'), -- Aktif Dolu
-(38, 2, '2026-11-01', '2026-11-05', 2, 1500.00, 'onaylı'),
-(44, 2, '2026-12-05', '2026-12-10', 2, 1500.00, 'beklemede'),
+(38, 2, DATE_ADD(CURDATE(), INTERVAL 3 DAY), DATE_ADD(CURDATE(), INTERVAL 7 DAY), 2, 1500.00, 'onaylı'),
+(44, 2, DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 25 DAY), 2, 1500.00, 'beklemede'),
 
 -- Oda 3 (103 - Standart - TEMİZLİKTE)
 (3,  3, '2026-06-01', '2026-06-05', 2, 2200.00, 'tamamlandı'),
@@ -279,7 +284,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (24, 6, '2026-08-01', '2026-08-06', 2, 3800.00, 'tamamlandı'),
 (30, 6, '2026-09-01', '2026-09-06', 2, 3800.00, 'tamamlandı'),
 (3,  6, DATE_SUB(CURDATE(), INTERVAL 3 DAY), CURDATE(), 2, 2600.00, 'onaylı'), -- Bugün çıkış yapacak
-(42, 6, '2026-11-05', '2026-11-10', 2, 2600.00, 'onaylı'),
+(42, 6, DATE_ADD(CURDATE(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 7 DAY), 2, 2600.00, 'onaylı'),
 
 -- Oda 7 (202 - Deluxe - Şu an DOLU)
 (7,  7, '2026-06-04', '2026-06-09', 2, 3800.00, 'tamamlandı'),
@@ -288,7 +293,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (25, 7, '2026-08-05', '2026-08-10', 2, 3800.00, 'tamamlandı'),
 (31, 7, '2026-09-08', '2026-09-13', 2, 3800.00, 'tamamlandı'),
 (4,  7, DATE_SUB(CURDATE(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 1 DAY), 2, 2600.00, 'onaylı'), -- Aktif Dolu
-(43, 7, '2026-11-12', '2026-11-17', 2, 2600.00, 'onaylı'),
+(43, 7, DATE_ADD(CURDATE(), INTERVAL 9 DAY), DATE_ADD(CURDATE(), INTERVAL 14 DAY), 2, 2600.00, 'onaylı'),
 
 -- Oda 8 (203 - Deluxe)
 (8,  8, '2026-06-01', '2026-06-05', 2, 3800.00, 'tamamlandı'),
@@ -339,7 +344,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (31, 13, '2026-08-15', '2026-08-20', 4, 5800.00, 'tamamlandı'),
 (37, 13, '2026-09-15', '2026-09-20', 4, 5800.00, 'tamamlandı'),
 (5,  13, DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), 4, 4200.00, 'onaylı'), -- Aktif Dolu
-(49, 13, '2026-11-25', '2026-11-30', 4, 4200.00, 'onaylı'),
+(49, 13, DATE_ADD(CURDATE(), INTERVAL 22 DAY), DATE_ADD(CURDATE(), INTERVAL 27 DAY), 4, 4200.00, 'onaylı'),
 
 -- Oda 14 (304 - Aile Süiti)
 (14, 14, '2026-06-02', '2026-06-07', 4, 5800.00, 'tamamlandı'),
@@ -402,7 +407,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (34, 22, '2026-07-12', '2026-07-17', 2, 3800.00, 'tamamlandı'),
 (40, 22, '2026-08-12', '2026-08-17', 2, 3800.00, 'tamamlandı'),
 (7,  22, DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), 2, 2600.00, 'onaylı'), -- Aktif Dolu
-(2,  22, '2026-11-10', '2026-11-15', 2, 2600.00, 'onaylı'),
+(2,  22, DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 10 DAY), 2, 2600.00, 'onaylı'),
 
 -- Oda 23 (503 - Deluxe Penthouse)
 (23, 23, '2026-06-06', '2026-06-11', 2, 3800.00, 'tamamlandı'),
