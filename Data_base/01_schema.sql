@@ -156,6 +156,8 @@ CREATE TABLE OzelGun(
 
 CREATE INDEX idx_rez_oda_tarih ON Rezervasyon (oda_id,giris_tarihi, cikis_tarihi);
 
+CREATE INDEX idx_rez_tarih ON Rezervasyon (giris_tarihi, cikis_tarihi); -- oda_id olmadan tarihe göre yapılan sorgular için (bugünün giriş-çıkış listesi, aylık rapor)
+
 CREATE INDEX idx_rez_durum ON Rezervasyon (durum);
 
 CREATE INDEX idx_oda_durum ON Oda (durum);

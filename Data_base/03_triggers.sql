@@ -226,4 +226,21 @@ BEGIN
 END //
 -- Temizlik görevi tamamlandığında odayı otomatik 'bos' durumuna çekerek satışa açar.
 
+
+DROP TRIGGER IF EXISTS trg_odeme_ekleme_log//
+CREATE TRIGGER trg_odeme_ekleme_log
+    AFTER INSERT ON Odeme
+    FOR EACH ROW
+BEGIN
+    INSERT INTO IslemLog (tablo_adi, islem_turu, eski_deger, yeni_deger, zaman_damgasi)
+    VALUES (
+               'Odeme',
+               'INSERT',
+               NULL,
+               CONCAT('ID: ', NEW.id, ' | Konaklama ID: ', NEW.konaklama_id, ' | Tutar: ', NEW.tutar, ' | Tür: ', NEW.odeme_turu),
+               NOW()
+           );
+END //
+-- Alınan her ödemeyi IslemLog tablosuna kaydeder. (Odeme tablosunda AFTER INSERT olarak trg_misafir_puan_artir da var, MySQL 8 aynı olaya birden fazla trigger'a izin veriyor.)
+
 DELIMITER ;
