@@ -6,6 +6,7 @@ TRUNCATE TABLE Odeme;
 TRUNCATE TABLE KonaklamaHizmeti;
 TRUNCATE TABLE Konaklama;
 TRUNCATE TABLE Rezervasyon;
+TRUNCATE TABLE Kampanya;
 TRUNCATE TABLE SezonFiyati;
 TRUNCATE TABLE OzelGun;
 TRUNCATE TABLE Oda;
@@ -238,6 +239,14 @@ INSERT INTO OzelGun (etkinlik_adi, baslangic_tarihi, bitis_tarihi, fiyat_carpani
                                                                                                 ('Cumhuriyet Bayramı Tatili', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 23 DAY), 0.65, 'Resmi tatil dönemi', NULL),
                                                                                                 ('Yılbaşı Programı', '2026-12-31', '2027-01-02', 0.75, 'Yılbaşı gala programı', NULL),
                                                                                                 ('Aile Haftası', DATE_ADD(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 36 DAY), 0.80, 'Sadece aile süitlerinde geçerli indirim', 3);
+
+-- 8b. KAMPANYA KODLARI
+INSERT INTO Kampanya (kod, indirim_orani, baslangic_tarihi, bitis_tarihi, kullanim_limiti, kullanim_sayisi) VALUES
+                                                                                                                ('KTU2026',      10.00, '2026-09-01', '2027-06-30', 100, 12),
+                                                                                                                ('YILBASI25',    25.00, '2026-12-01', '2026-12-31', 20,  0),
+                                                                                                                ('ERKENKUS',     15.00, '2026-10-01', '2027-01-31', 50,  8),
+                                                                                                                ('YAZ2026',      20.00, '2026-05-01', '2026-08-31', 50,  50), -- süresi dolmuş kampanya (test için)
+                                                                                                                ('HAKANHOCA',    30.00, '2026-01-01', '2027-12-31', 3,   3);  -- kullanım limiti dolmuş kampanya (test için)
 
 -- 9. REZERVASYONLAR (212 Adet - 25 Oda İçin Çakışmasız, Sıralı)
 INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, durum) VALUES
@@ -617,3 +626,12 @@ INSERT INTO TemizlikGorevleri (oda_id, personel_id, oncelik, durum, tamamlanma_z
 
 -- 16. CHECK kısıtı testi: eksi tutarlı ödeme girilememeli
 -- INSERT INTO Odeme (konaklama_id, tutar, odeme_turu) VALUES (7, -500.00, 'nakit');
+
+-- 17. Kampanya kodu kullanıldığında kullanım sayısının artmasını kontrol etmek için (KTU2026: 12 -> 13)
+-- INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, kampanya_id)
+-- VALUES (10, 4, '2027-03-10', '2027-03-12', 2, 1350.00, 1);
+-- SELECT kod, kullanim_sayisi, kullanim_limiti FROM Kampanya WHERE id = 1;
+
+-- 18. Süresi dolmuş veya limiti dolmuş kampanya kodunun engellenmesi
+-- INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, kampanya_id)
+-- VALUES (10, 4, '2027-03-15', '2027-03-17', 2, 1200.00, 5);

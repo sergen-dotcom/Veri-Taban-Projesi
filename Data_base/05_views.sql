@@ -34,6 +34,28 @@ GROUP BY o.id, o.oda_no, o.kat, o.durum;
 -- LEFT JOIN sayesinde hiç temizlenmemiş odalar da listede çıkar (son_temizlik_tarihi NULL olur).
 
 
+CREATE OR REPLACE VIEW v_misafir_sadakat AS
+SELECT id AS misafir_id,
+       ad,
+       soyad,
+       toplam_puan,
+       CASE
+           WHEN toplam_puan >= 5000 THEN 'Platin'
+           WHEN toplam_puan >= 2000 THEN 'Altın'
+           WHEN toplam_puan >= 500 THEN 'Gümüş'
+           ELSE 'Bronz'
+           END AS seviye,
+       CASE
+           WHEN toplam_puan >= 5000 THEN 15
+           WHEN toplam_puan >= 2000 THEN 10
+           WHEN toplam_puan >= 500 THEN 5
+           ELSE 0
+           END AS indirim_orani -- yüzde olarak, fiyat teklifi hesaplanırken kullanılıyor
+FROM Misafir;
+-- Misafirin toplam puanına göre sadakat seviyesini ve rezervasyonlarda alacağı indirim oranını gösterir.
+-- Seviye ayrı bir kolonda tutulmuyor, puandan hesaplanıyor. Böylece puan değişince seviye kendiliğinden güncel kalıyor.
+
+
 -- TEST SORGULARI
 
 -- 1. Bugünün giriş-çıkış listesi (oda 101 giriş, oda 201 çıkış görünmeli)
@@ -41,3 +63,6 @@ GROUP BY o.id, o.oda_no, o.kat, o.durum;
 
 -- 2. Odaların durumu ve son temizlik tarihleri
 -- SELECT * FROM v_oda_guncel_durum ORDER BY oda_no;
+
+-- 3. Misafirlerin sadakat seviyeleri (Hakan Aydın Platin olmalı)
+-- SELECT * FROM v_misafir_sadakat ORDER BY toplam_puan DESC LIMIT 10;

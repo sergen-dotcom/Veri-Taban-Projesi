@@ -243,4 +243,26 @@ BEGIN
 END //
 -- Alınan her ödemeyi IslemLog tablosuna kaydeder. (Odeme tablosunda AFTER INSERT olarak trg_misafir_puan_artir da var, MySQL 8 aynı olaya birden fazla trigger'a izin veriyor.)
 
+
+DROP TRIGGER IF EXISTS trg_kampanya_kullanim//
+CREATE TRIGGER trg_kampanya_kullanim
+    BEFORE INSERT ON Rezervasyon
+    FOR EACH ROW
+BEGIN
+    IF NEW.kampanya_id IS NOT NULL THEN
+        UPDATE Kampanya
+        SET kullanim_sayisi = kullanim_sayisi + 1
+        WHERE id = NEW.kampanya_id
+          AND CURDATE() BETWEEN baslangic_tarihi AND bitis_tarihi
+          AND kullanim_sayisi < kullanim_limiti;
+
+        IF ROW_COUNT() = 0 THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'HATA: Kampanya kodu geçersiz, süresi dolmuş veya kullanım limiti dolmuş.';
+        END IF;
+    END IF;
+END //
+-- Kampanya kodu kullanılan rezervasyonlarda kodun geçerli olduğunu kontrol eder ve kullanım sayısını 1 artırır.
+-- Kontrol ve artırma tek UPDATE ile yapılıyor: koşullar sağlanmazsa hiçbir satır güncellenmez (ROW_COUNT() = 0) ve rezervasyon engellenir.
+
 DELIMITER ;

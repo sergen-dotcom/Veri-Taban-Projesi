@@ -89,6 +89,17 @@ CREATE  TABLE SezonFiyati (
     CONSTRAINT  fk_sezon_tipi FOREIGN KEY (oda_tipi_id) REFERENCES OdaTipi(id)
 ) ENGINE=InnoDB;
 
+CREATE TABLE Kampanya (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    kod VARCHAR(30) UNIQUE NOT NULL, -- misafirin rezervasyonda girdiği indirim kodu
+    indirim_orani DECIMAL(5, 2) NOT NULL CHECK (indirim_orani > 0 AND indirim_orani <= 100), -- yüzde olarak (10.00 = %10)
+    baslangic_tarihi DATE NOT NULL,
+    bitis_tarihi DATE NOT NULL,
+    kullanim_limiti INT NOT NULL,
+    kullanim_sayisi INT DEFAULT 0, -- her kullanımda trigger ile 1 artıyor
+    CONSTRAINT chk_kampanya_tarih CHECK (bitis_tarihi >= baslangic_tarihi)
+) ENGINE=InnoDB;
+
 CREATE TABLE Rezervasyon (
     id INT AUTO_INCREMENT PRIMARY KEY NOT NULL,
     misafir_id INT NOT NULL,
@@ -99,6 +110,8 @@ CREATE TABLE Rezervasyon (
     anlasilan_fiyat DECIMAL(10,2) NOT NULL, -- burda sezon fiyatı değiştikten sonra rezervasyonun fiyatı değişmesin diye.
     durum ENUM('beklemede', 'onaylı', 'iptal', 'tamamlandı') DEFAULT  'beklemede',
     olusturma_tarihi TIMESTAMP DEFAULT  CURRENT_TIMESTAMP, -- dakika saniyeye kdr tutuyor.
+    kampanya_id INT NULL, -- kampanya kodu kullanılmadıysa NULL
+    CONSTRAINT fk_rez_kampanya FOREIGN KEY (kampanya_id) REFERENCES Kampanya(id),
     CONSTRAINT fk_rez_misafir FOREIGN KEY (misafir_id) REFERENCES  Misafir(id),
     CONSTRAINT fk_rez_oda FOREIGN KEY  (oda_id) REFERENCES  Oda(id)
 ) ENGINE=InnoDB;
