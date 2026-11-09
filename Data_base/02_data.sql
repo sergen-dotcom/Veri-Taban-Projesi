@@ -6,12 +6,15 @@ TRUNCATE TABLE Odeme;
 TRUNCATE TABLE KonaklamaHizmeti;
 TRUNCATE TABLE Konaklama;
 TRUNCATE TABLE Rezervasyon;
+TRUNCATE TABLE Kampanya;
 TRUNCATE TABLE SezonFiyati;
 TRUNCATE TABLE OzelGun;
 TRUNCATE TABLE Oda;
 TRUNCATE TABLE Personel;
 TRUNCATE TABLE Misafir;
 TRUNCATE TABLE HizmetEnvanter;
+TRUNCATE TABLE OdaTipiOlanak;
+TRUNCATE TABLE Olanak;
 TRUNCATE TABLE EkHizmet;
 TRUNCATE TABLE Kullanici;
 TRUNCATE TABLE OdaTipi;
@@ -23,6 +26,17 @@ INSERT INTO OdaTipi (ad, kapasite, aciklama, temel_fiyat) VALUES
                                                               ('Deluxe Deniz Manzaralı', 2, 'Geniş balkonlu, panoramik deniz manzaralı, jakuzili banyo', 2600.00),
                                                               ('Aile Süiti', 4, '2 ayrı yatak odası, 1 salon, çocuk alanı ve mini mutfak', 4200.00),
                                                               ('Kral Dairesi', 4, 'Teras katı, özel sauna, şömine ve Hakan Aydın Onursal Çalışma Köşesi', 9500.00);
+
+-- 1b. OLANAKLAR VE ODA TIPLERININ OLANAKLARI
+INSERT INTO Olanak (ad) VALUES
+                            ('Wi-Fi'), ('Klima'), ('Minibar'), ('Çalışma Masası'), ('Balkon'), ('Deniz Manzarası'),
+                            ('Jakuzi'), ('Mini Mutfak'), ('Çocuk Alanı'), ('Sauna'), ('Şömine'), ('Teras');
+
+INSERT INTO OdaTipiOlanak (oda_tipi_id, olanak_id) VALUES
+                                                       (1, 1), (1, 2), (1, 3), (1, 4),                             -- Standart Oda
+                                                       (2, 1), (2, 2), (2, 3), (2, 5), (2, 6), (2, 7),             -- Deluxe Deniz Manzaralı
+                                                       (3, 1), (3, 2), (3, 3), (3, 8), (3, 9),                     -- Aile Süiti
+                                                       (4, 1), (4, 2), (4, 3), (4, 4), (4, 10), (4, 11), (4, 12);  -- Kral Dairesi
 
 -- 2. KULLANICILAR (1-5 Personel, 6-60 Misafir = Toplam 60 Kullanıcı)
 SET @sifre = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; -- 'password'
@@ -151,7 +165,12 @@ INSERT INTO Misafir (kullanici_id, tc_pasaport, telefon, dogum_tarihi, ad, soyad
                                                                                                    (52, '45278695149', '05307152609', '1995-01-08', 'Taylan',      'Antalyalı',  150),
                                                                                                    (53, '56389706250', '05318263710', '1998-01-25', 'Berkan',      'Kutlu',      175),
                                                                                                    (54, '67490817361', '05329374821', '1999-12-08', 'Halil',       'Dervişoğlu', 160),
-                                                                                                   (55, '78501928472', '05330485932', '2000-07-07', 'Yunus',       'Akgün',      320);
+                                                                                                   (55, '78501928472', '05330485932', '2000-07-07', 'Yunus',       'Akgün',      320),
+                                                                                                   (56, '89612039583', '05341596043', '1996-09-20', 'Emin',        'Bayram',     70),
+                                                                                                   (57, '90723140694', '05352607154', '2002-04-21', 'Kazımcan',    'Karataş',    105),
+                                                                                                   (58, '11834251705', '05363718265', '2003-07-24', 'Metehan',     'Baltacı',    60),
+                                                                                                   (59, '22945362816', '05374829376', '2001-02-03', 'Ali Turap',   'Bülbül',     40),
+                                                                                                   (60, '33056473927', '05385930487', '2003-05-31', 'Hamza',       'Akman',      85);
 -- 5. ODALAR (25 Adet - 5 Kat)
 INSERT INTO Oda (oda_no, kat, oda_tipi_id, durum) VALUES
 -- Kat 1: Standart Oda (Oda Tipi: 1)
@@ -214,11 +233,20 @@ INSERT INTO SezonFiyati (oda_tipi_id, baslangic_tarihi, bitis_tarihi, gecelik_fi
                                                                                          (4, '2026-10-01', '2027-05-31', 9500.00);
 
 -- 8. OZEL GUNLER
-INSERT INTO OzelGun (etkinlik_adi, baslangic_tarihi, bitis_tarihi, fiyat_carpani, aciklama) VALUES
-                                                                                                ('Trabzonspor - Fenerbahçe Derbisi', DATE_ADD(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 12 DAY), 1.40, 'Derbi maçı yoğunluğu'),
-                                                                                                ('Hakan Aydın Vizesi Sonrası İyileşme Kampı', DATE_ADD(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 18 DAY), 0.75, 'Veri tabanı sınavı sonrası kafa dinleme indirimi'),
-                                                                                                ('Cumhuriyet Bayramı Tatili', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 23 DAY), 0.65, 'Resmi tatil dönemi'),
-                                                                                                ('Yılbaşı Programı', '2026-12-31', '2027-01-02', 0.75, 'Yılbaşı gala programı');
+INSERT INTO OzelGun (etkinlik_adi, baslangic_tarihi, bitis_tarihi, fiyat_carpani, aciklama, oda_tipi_id) VALUES
+                                                                                                ('Trabzonspor - Fenerbahçe Derbisi', DATE_ADD(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 12 DAY), 1.40, 'Derbi maçı yoğunluğu', NULL),
+                                                                                                ('Hakan Aydın Vizesi Sonrası İyileşme Kampı', DATE_ADD(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 18 DAY), 0.75, 'Veri tabanı sınavı sonrası kafa dinleme indirimi', NULL),
+                                                                                                ('Cumhuriyet Bayramı Tatili', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 23 DAY), 0.65, 'Resmi tatil dönemi', NULL),
+                                                                                                ('Yılbaşı Programı', '2026-12-31', '2027-01-02', 0.75, 'Yılbaşı gala programı', NULL),
+                                                                                                ('Aile Haftası', DATE_ADD(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 36 DAY), 0.80, 'Sadece aile süitlerinde geçerli indirim', 3);
+
+-- 8b. KAMPANYA KODLARI
+INSERT INTO Kampanya (kod, indirim_orani, baslangic_tarihi, bitis_tarihi, kullanim_limiti, kullanim_sayisi) VALUES
+                                                                                                                ('KTU2026',      10.00, '2026-09-01', '2027-06-30', 100, 12),
+                                                                                                                ('YILBASI25',    25.00, '2026-12-01', '2026-12-31', 20,  0),
+                                                                                                                ('ERKENKUS',     15.00, '2026-10-01', '2027-01-31', 50,  8),
+                                                                                                                ('YAZ2026',      20.00, '2026-05-01', '2026-08-31', 50,  50), -- süresi dolmuş kampanya (test için)
+                                                                                                                ('HAKANHOCA',    30.00, '2026-01-01', '2027-12-31', 3,   3);  -- kullanım limiti dolmuş kampanya (test için)
 
 -- 9. REZERVASYONLAR (212 Adet - 25 Oda İçin Çakışmasız, Sıralı)
 INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, durum) VALUES
@@ -231,8 +259,8 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (31, 1, '2026-08-02', '2026-08-07', 2, 2200.00, 'tamamlandı'),
 (37, 1, '2026-09-01', '2026-09-06', 2, 2200.00, 'tamamlandı'),
 (1,  1, CURDATE(), DATE_ADD(CURDATE(), INTERVAL 3 DAY), 2, 1500.00, 'onaylı'), -- Bugün giriş yapacak
-(43, 1, '2026-11-05', '2026-11-10', 2, 1500.00, 'onaylı'),
-(49, 1, '2026-11-15', '2026-11-20', 2, 1500.00, 'beklemede'),
+(43, 1, DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 10 DAY), 2, 1500.00, 'onaylı'),
+(49, 1, DATE_ADD(CURDATE(), INTERVAL 12 DAY), DATE_ADD(CURDATE(), INTERVAL 17 DAY), 2, 1500.00, 'beklemede'),
 
 -- Oda 2 (102 - Standart - Şu an DOLU)
 (2,  2, '2026-06-03', '2026-06-07', 2, 2200.00, 'tamamlandı'),
@@ -242,8 +270,8 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (26, 2, '2026-08-05', '2026-08-10', 2, 2200.00, 'tamamlandı'),
 (32, 2, '2026-09-03', '2026-09-08', 2, 2200.00, 'tamamlandı'),
 (2,  2, DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), 2, 1500.00, 'onaylı'), -- Aktif Dolu
-(38, 2, '2026-11-01', '2026-11-05', 2, 1500.00, 'onaylı'),
-(44, 2, '2026-12-05', '2026-12-10', 2, 1500.00, 'beklemede'),
+(38, 2, DATE_ADD(CURDATE(), INTERVAL 3 DAY), DATE_ADD(CURDATE(), INTERVAL 7 DAY), 2, 1500.00, 'onaylı'),
+(44, 2, DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 25 DAY), 2, 1500.00, 'beklemede'),
 
 -- Oda 3 (103 - Standart - TEMİZLİKTE)
 (3,  3, '2026-06-01', '2026-06-05', 2, 2200.00, 'tamamlandı'),
@@ -279,7 +307,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (24, 6, '2026-08-01', '2026-08-06', 2, 3800.00, 'tamamlandı'),
 (30, 6, '2026-09-01', '2026-09-06', 2, 3800.00, 'tamamlandı'),
 (3,  6, DATE_SUB(CURDATE(), INTERVAL 3 DAY), CURDATE(), 2, 2600.00, 'onaylı'), -- Bugün çıkış yapacak
-(42, 6, '2026-11-05', '2026-11-10', 2, 2600.00, 'onaylı'),
+(42, 6, DATE_ADD(CURDATE(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 7 DAY), 2, 2600.00, 'onaylı'),
 
 -- Oda 7 (202 - Deluxe - Şu an DOLU)
 (7,  7, '2026-06-04', '2026-06-09', 2, 3800.00, 'tamamlandı'),
@@ -288,7 +316,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (25, 7, '2026-08-05', '2026-08-10', 2, 3800.00, 'tamamlandı'),
 (31, 7, '2026-09-08', '2026-09-13', 2, 3800.00, 'tamamlandı'),
 (4,  7, DATE_SUB(CURDATE(), INTERVAL 2 DAY), DATE_ADD(CURDATE(), INTERVAL 1 DAY), 2, 2600.00, 'onaylı'), -- Aktif Dolu
-(43, 7, '2026-11-12', '2026-11-17', 2, 2600.00, 'onaylı'),
+(43, 7, DATE_ADD(CURDATE(), INTERVAL 9 DAY), DATE_ADD(CURDATE(), INTERVAL 14 DAY), 2, 2600.00, 'onaylı'),
 
 -- Oda 8 (203 - Deluxe)
 (8,  8, '2026-06-01', '2026-06-05', 2, 3800.00, 'tamamlandı'),
@@ -339,7 +367,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (31, 13, '2026-08-15', '2026-08-20', 4, 5800.00, 'tamamlandı'),
 (37, 13, '2026-09-15', '2026-09-20', 4, 5800.00, 'tamamlandı'),
 (5,  13, DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 3 DAY), 4, 4200.00, 'onaylı'), -- Aktif Dolu
-(49, 13, '2026-11-25', '2026-11-30', 4, 4200.00, 'onaylı'),
+(49, 13, DATE_ADD(CURDATE(), INTERVAL 22 DAY), DATE_ADD(CURDATE(), INTERVAL 27 DAY), 4, 4200.00, 'onaylı'),
 
 -- Oda 14 (304 - Aile Süiti)
 (14, 14, '2026-06-02', '2026-06-07', 4, 5800.00, 'tamamlandı'),
@@ -402,7 +430,7 @@ INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sa
 (34, 22, '2026-07-12', '2026-07-17', 2, 3800.00, 'tamamlandı'),
 (40, 22, '2026-08-12', '2026-08-17', 2, 3800.00, 'tamamlandı'),
 (7,  22, DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 2 DAY), 2, 2600.00, 'onaylı'), -- Aktif Dolu
-(2,  22, '2026-11-10', '2026-11-15', 2, 2600.00, 'onaylı'),
+(2,  22, DATE_ADD(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 10 DAY), 2, 2600.00, 'onaylı'),
 
 -- Oda 23 (503 - Deluxe Penthouse)
 (23, 23, '2026-06-06', '2026-06-11', 2, 3800.00, 'tamamlandı'),
@@ -595,3 +623,15 @@ INSERT INTO TemizlikGorevleri (oda_id, personel_id, oncelik, durum, tamamlanma_z
 -- 15. Temizlik sonrası odanın rezerv edilebilir oluşunu kontrol etme
 -- UPDATE TemizlikGorevleri SET durum = 'Tamamlandı' WHERE id = 1;
 -- SELECT oda_no, durum FROM Oda WHERE id = 3;
+
+-- 16. CHECK kısıtı testi: eksi tutarlı ödeme girilememeli
+-- INSERT INTO Odeme (konaklama_id, tutar, odeme_turu) VALUES (7, -500.00, 'nakit');
+
+-- 17. Kampanya kodu kullanıldığında kullanım sayısının artmasını kontrol etmek için (KTU2026: 12 -> 13)
+-- INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, kampanya_id)
+-- VALUES (10, 4, '2027-03-10', '2027-03-12', 2, 1350.00, 1);
+-- SELECT kod, kullanim_sayisi, kullanim_limiti FROM Kampanya WHERE id = 1;
+
+-- 18. Süresi dolmuş veya limiti dolmuş kampanya kodunun engellenmesi
+-- INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, kampanya_id)
+-- VALUES (10, 4, '2027-03-15', '2027-03-17', 2, 1200.00, 5);

@@ -226,4 +226,43 @@ BEGIN
 END //
 -- Temizlik görevi tamamlandığında odayı otomatik 'bos' durumuna çekerek satışa açar.
 
+
+DROP TRIGGER IF EXISTS trg_odeme_ekleme_log//
+CREATE TRIGGER trg_odeme_ekleme_log
+    AFTER INSERT ON Odeme
+    FOR EACH ROW
+BEGIN
+    INSERT INTO IslemLog (tablo_adi, islem_turu, eski_deger, yeni_deger, zaman_damgasi)
+    VALUES (
+               'Odeme',
+               'INSERT',
+               NULL,
+               CONCAT('ID: ', NEW.id, ' | Konaklama ID: ', NEW.konaklama_id, ' | Tutar: ', NEW.tutar, ' | Tür: ', NEW.odeme_turu),
+               NOW()
+           );
+END //
+-- Alınan her ödemeyi IslemLog tablosuna kaydeder. (Odeme tablosunda AFTER INSERT olarak trg_misafir_puan_artir da var, MySQL 8 aynı olaya birden fazla trigger'a izin veriyor.)
+
+
+DROP TRIGGER IF EXISTS trg_kampanya_kullanim//
+CREATE TRIGGER trg_kampanya_kullanim
+    BEFORE INSERT ON Rezervasyon
+    FOR EACH ROW
+BEGIN
+    IF NEW.kampanya_id IS NOT NULL THEN
+        UPDATE Kampanya
+        SET kullanim_sayisi = kullanim_sayisi + 1
+        WHERE id = NEW.kampanya_id
+          AND CURDATE() BETWEEN baslangic_tarihi AND bitis_tarihi
+          AND kullanim_sayisi < kullanim_limiti;
+
+        IF ROW_COUNT() = 0 THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'HATA: Kampanya kodu geçersiz, süresi dolmuş veya kullanım limiti dolmuş.';
+        END IF;
+    END IF;
+END //
+-- Kampanya kodu kullanılan rezervasyonlarda kodun geçerli olduğunu kontrol eder ve kullanım sayısını 1 artırır.
+-- Kontrol ve artırma tek UPDATE ile yapılıyor: koşullar sağlanmazsa hiçbir satır güncellenmez (ROW_COUNT() = 0) ve rezervasyon engellenir.
+
 DELIMITER ;
