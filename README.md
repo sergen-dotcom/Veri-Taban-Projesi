@@ -72,7 +72,7 @@ Veritabanı tabloları arasındaki ilişkileri ve anahtar yapılarını göstere
 
 ## ⚡ Veritabanı Tetikleyicileri (Triggers)
 
-Otel operasyonlarının ve veri bütünlüğünün doğrudan veritabanı katmanında güvenceye alınması amacıyla `Data_base/03_triggers.sql` içerisinde **10 adet Trigger** tanımlanmıştır:
+Otel operasyonlarının ve veri bütünlüğünün doğrudan veritabanı katmanında güvenceye alınması amacıyla `Data_base/03_triggers.sql` içerisinde **11 adet Trigger** tanımlanmıştır:
 
 | No | Trigger Adı | Tablo & Tetikleme Zamanı | İş Kuralı ve Açıklama |
 | :---: | :--- | :--- | :--- |
@@ -86,6 +86,22 @@ Otel operasyonlarının ve veri bütünlüğünün doğrudan veritabanı katman�
 | **8** | `trg_misafir_puan_kontrol_ve_log` | `BEFORE UPDATE ON Misafir` | Puan bakiyesinin sıfırın altına düşmesini engeller ve harcanan puanları `IslemLog`'a yazar. |
 | **9** | `trg_rezervasyon_kapasite_kontrol` | `BEFORE INSERT ON Rezervasyon` | Odanın maksimum kişi kapasitesini aşan rezervasyon denemelerini engeller. |
 | **10** | `trg_temizlik_bitti_oda_bos` | `AFTER UPDATE ON TemizlikGorevleri` | Temizlik görevi tamamlandığında odayı otomatik `'bos'` durumuna çekerek satışa açar. |
+| **11** | `trg_odeme_ekleme_log` | `AFTER INSERT ON Odeme` | Alınan her ödemeyi `IslemLog` tablosuna kaydeder. |
+
+---
+
+## 🧩 Saklı Prosedürler, View'lar ve Transaction
+
+`Data_base/04_procedures.sql` ve `Data_base/05_views.sql` içerisinde tanımlanmıştır:
+
+| Nesne | Tür | Açıklama |
+| :--- | :--- | :--- |
+| `sp_bos_odalari_listele(giris, cikis, oda_tipi_id)` | Procedure | Verilen tarih aralığında çakışan rezervasyonu olmayan odaları listeler (`oda_tipi_id` NULL ise tüm tipler). |
+| `sp_konaklama_tutari_hesapla(konaklama_id, OUT oda, OUT hizmet, OUT toplam)` | Procedure | Her gece için o gecenin sezon fiyatını (özel gün çarpanıyla) ve ek hizmetleri toplayarak konaklama tutarını hesaplar. |
+| `sp_aylik_doluluk_gelir_raporu(yil, ay)` | Procedure | Aylık doluluk oranı ve gelir raporu üretir. |
+| `sp_checkout(konaklama_id, odeme_turu)` | Procedure + **Transaction** | Konaklamayı kapatır, ödemeyi alır, oda durumunu günceller ve rezervasyonu tamamlar; herhangi bir adım başarısız olursa tümü `ROLLBACK` ile geri alınır. |
+| `v_bugun_giris_cikis` | View | Bugün giriş ve çıkış yapacak misafirler. |
+| `v_oda_guncel_durum` | View | Oda bazında güncel durum ve son temizlik tarihi. |
 
 ---
 
@@ -141,6 +157,21 @@ Gerçekçi otel operasyon simülasyonu ve test rezervasyonlarını yüklemek iç
 
 ```sql
 SOURCE Data_base/02_data.sql;
+```
+
+### 6. Saklı Prosedürleri ve View'ları Yükleme
+Boş oda arama, konaklama tutarı hesaplama, aylık rapor, check-out transaction'ı ve view'lar için:
+
+```sql
+SOURCE Data_base/04_procedures.sql;
+SOURCE Data_base/05_views.sql;
+```
+
+### 7. İndeks Performans Testi (İsteğe Bağlı)
+200.000 satırlık test tablolarıyla indeksli/indekssiz sorgu sürelerini karşılaştırmak için:
+
+```sql
+SOURCE Data_base/06_index_performans_testi.sql;
 ```
 
 ---

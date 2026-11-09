@@ -12,6 +12,8 @@ TRUNCATE TABLE Oda;
 TRUNCATE TABLE Personel;
 TRUNCATE TABLE Misafir;
 TRUNCATE TABLE HizmetEnvanter;
+TRUNCATE TABLE OdaTipiOlanak;
+TRUNCATE TABLE Olanak;
 TRUNCATE TABLE EkHizmet;
 TRUNCATE TABLE Kullanici;
 TRUNCATE TABLE OdaTipi;
@@ -23,6 +25,17 @@ INSERT INTO OdaTipi (ad, kapasite, aciklama, temel_fiyat) VALUES
                                                               ('Deluxe Deniz Manzaralı', 2, 'Geniş balkonlu, panoramik deniz manzaralı, jakuzili banyo', 2600.00),
                                                               ('Aile Süiti', 4, '2 ayrı yatak odası, 1 salon, çocuk alanı ve mini mutfak', 4200.00),
                                                               ('Kral Dairesi', 4, 'Teras katı, özel sauna, şömine ve Hakan Aydın Onursal Çalışma Köşesi', 9500.00);
+
+-- 1b. OLANAKLAR VE ODA TIPLERININ OLANAKLARI
+INSERT INTO Olanak (ad) VALUES
+                            ('Wi-Fi'), ('Klima'), ('Minibar'), ('Çalışma Masası'), ('Balkon'), ('Deniz Manzarası'),
+                            ('Jakuzi'), ('Mini Mutfak'), ('Çocuk Alanı'), ('Sauna'), ('Şömine'), ('Teras');
+
+INSERT INTO OdaTipiOlanak (oda_tipi_id, olanak_id) VALUES
+                                                       (1, 1), (1, 2), (1, 3), (1, 4),                             -- Standart Oda
+                                                       (2, 1), (2, 2), (2, 3), (2, 5), (2, 6), (2, 7),             -- Deluxe Deniz Manzaralı
+                                                       (3, 1), (3, 2), (3, 3), (3, 8), (3, 9),                     -- Aile Süiti
+                                                       (4, 1), (4, 2), (4, 3), (4, 4), (4, 10), (4, 11), (4, 12);  -- Kral Dairesi
 
 -- 2. KULLANICILAR (1-5 Personel, 6-60 Misafir = Toplam 60 Kullanıcı)
 SET @sifre = '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi'; -- 'password'
@@ -219,11 +232,12 @@ INSERT INTO SezonFiyati (oda_tipi_id, baslangic_tarihi, bitis_tarihi, gecelik_fi
                                                                                          (4, '2026-10-01', '2027-05-31', 9500.00);
 
 -- 8. OZEL GUNLER
-INSERT INTO OzelGun (etkinlik_adi, baslangic_tarihi, bitis_tarihi, fiyat_carpani, aciklama) VALUES
-                                                                                                ('Trabzonspor - Fenerbahçe Derbisi', DATE_ADD(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 12 DAY), 1.40, 'Derbi maçı yoğunluğu'),
-                                                                                                ('Hakan Aydın Vizesi Sonrası İyileşme Kampı', DATE_ADD(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 18 DAY), 0.75, 'Veri tabanı sınavı sonrası kafa dinleme indirimi'),
-                                                                                                ('Cumhuriyet Bayramı Tatili', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 23 DAY), 0.65, 'Resmi tatil dönemi'),
-                                                                                                ('Yılbaşı Programı', '2026-12-31', '2027-01-02', 0.75, 'Yılbaşı gala programı');
+INSERT INTO OzelGun (etkinlik_adi, baslangic_tarihi, bitis_tarihi, fiyat_carpani, aciklama, oda_tipi_id) VALUES
+                                                                                                ('Trabzonspor - Fenerbahçe Derbisi', DATE_ADD(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 12 DAY), 1.40, 'Derbi maçı yoğunluğu', NULL),
+                                                                                                ('Hakan Aydın Vizesi Sonrası İyileşme Kampı', DATE_ADD(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 18 DAY), 0.75, 'Veri tabanı sınavı sonrası kafa dinleme indirimi', NULL),
+                                                                                                ('Cumhuriyet Bayramı Tatili', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 23 DAY), 0.65, 'Resmi tatil dönemi', NULL),
+                                                                                                ('Yılbaşı Programı', '2026-12-31', '2027-01-02', 0.75, 'Yılbaşı gala programı', NULL),
+                                                                                                ('Aile Haftası', DATE_ADD(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 36 DAY), 0.80, 'Sadece aile süitlerinde geçerli indirim', 3);
 
 -- 9. REZERVASYONLAR (212 Adet - 25 Oda İçin Çakışmasız, Sıralı)
 INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, durum) VALUES
@@ -600,3 +614,6 @@ INSERT INTO TemizlikGorevleri (oda_id, personel_id, oncelik, durum, tamamlanma_z
 -- 15. Temizlik sonrası odanın rezerv edilebilir oluşunu kontrol etme
 -- UPDATE TemizlikGorevleri SET durum = 'Tamamlandı' WHERE id = 1;
 -- SELECT oda_no, durum FROM Oda WHERE id = 3;
+
+-- 16. CHECK kısıtı testi: eksi tutarlı ödeme girilememeli
+-- INSERT INTO Odeme (konaklama_id, tutar, odeme_turu) VALUES (7, -500.00, 'nakit');

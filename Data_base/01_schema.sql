@@ -5,9 +5,9 @@ Use hotel_management;
 CREATE TABLE OdaTipi (
     id INT AUTO_INCREMENT PRIMARY KEY, -- auto_increment otomatik oda ekledikçe id sayısını +1 yapacak, primary key de hem unique hem not null değeri sağlar. diğer tablolara bağlamada önemli
     ad VARCHAR(50) NOT NULL, -- 50 karaktere kadar isim alabilir
-    kapasite INT NOT NULL,
+    kapasite INT NOT NULL CHECK (kapasite > 0), -- check kısıtı 0 veya eksi kapasiteli oda tipi girilmesini engeller
     aciklama TEXT,  -- açıklamaları text saklar
-    temel_fiyat DECIMAL(10, 2) NOT NULL -- decimal (10,2) 10 precision (total basamak sayısı) 2 scale (virgülden sonraki basamak sayısı) ifade eder.
+    temel_fiyat DECIMAL(10, 2) NOT NULL CHECK (temel_fiyat > 0) -- decimal (10,2) 10 precision (total basamak sayısı) 2 scale (virgülden sonraki basamak sayısı) ifade eder.
     ) ENGINE = InnoDB; -- InnoDB transaction (ACID) ((aynı anda işlem yapmada daha iyi)) desteği sunuyor. (MYISAM da bu destek yok o yüzden)
 
 CREATE TABLE Kullanici (
@@ -20,18 +20,31 @@ CREATE TABLE Kullanici (
 CREATE TABLE EkHizmet (
     id INT AUTO_INCREMENT PRIMARY KEY,
     hizmet_adi VARCHAR(100) NOT NULL,
-    birim_fiyat DECIMAL(10, 2) NOT NULL -- decimal yerine float veya double kullansaaydım "yaklaşık" sakladığı için kuruş kaybı meydana gelirdi (muhasebe işleri beni ne ilgilendiriyorsa)
+    birim_fiyat DECIMAL(10, 2) NOT NULL CHECK (birim_fiyat >= 0) -- 0 olabilir (ikram hizmetleri). decimal yerine float veya double kullansaaydım "yaklaşık" sakladığı için kuruş kaybı meydana gelirdi (muhasebe işleri beni ne ilgilendiriyorsa)
 ) ENGINE=InnoDB; -- decimal exact sayıyı tutar son virgülünün son kuruşuna kadar.
+
+CREATE TABLE Olanak (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    ad VARCHAR(50) UNIQUE NOT NULL -- Wi-Fi, Jakuzi, Balkon vb.
+) ENGINE=InnoDB; -- olanaklar önceden OdaTipi.aciklama içinde düz yazı olarak duruyordu, ayrı tabloya çıkarınca filtrelenebilir hale geldi
 
 -- bağımlı tablolar (secondary bağlayacakların)
 
 CREATE TABLE HizmetEnvanter (
     hizmet_id INT PRIMARY KEY, -- id auto increment yok çünkü içilen kolanın tek bi stok kaydı olabilir. iki stok satırı olmaz. (bire bir / bire sıfır ilişkisiymiş.)
-    stok_miktari INT DEFAULT 0, -- yeni ürün eklendiğinde otomatik stoğu 0 yapar.
+    stok_miktari INT DEFAULT 0 CHECK (stok_miktari >= 0), -- yeni ürün eklendiğinde otomatik stoğu 0 yapar.
     CONSTRAINT fk_envanter_hizmet FOREIGN KEY (hizmet_id) REFERENCES EkHizmet(id) ON DELETE CASCADE
 )ENGINE=InnoDB; -- hizmet_id bağlandığı hizmet tablosundan geldiği için var olan bir id olmak zorunda hayali bir ürüne stok girilmez.
 -- on delete cascede ekhizmet taablosundan birşey sildiğimde burdada silinmesini sağlıyormuş.
 -- Bu tablonun bağıl olmasının sebebi her ek hizmetin fiziksel ürün olmaması KOLA vb. stoğu tutulabilir ürünler için. Masaj vb şeylerin stoğu tutulamayacağı için ek hizmetler tablosunda null döndürmem gerekecekti.
+
+CREATE TABLE OdaTipiOlanak (
+    oda_tipi_id INT NOT NULL,
+    olanak_id INT NOT NULL,
+    PRIMARY KEY (oda_tipi_id, olanak_id), -- iki kolonlu primary key: aynı olanak bir oda tipine iki kez eklenemez
+    CONSTRAINT fk_oto_tip FOREIGN KEY (oda_tipi_id) REFERENCES OdaTipi(id) ON DELETE CASCADE,
+    CONSTRAINT fk_oto_olanak FOREIGN KEY (olanak_id) REFERENCES Olanak(id) ON DELETE CASCADE
+) ENGINE=InnoDB; -- çoka çok ilişki için ara tablo: bir oda tipinde birden fazla olanak, bir olanak da birden fazla oda tipinde olabilir
 
 CREATE TABLE Misafir (
     id INT AUTO_INCREMENT PRIMARY KEY, -- her user eklediğinde +1 basıcak
@@ -71,7 +84,8 @@ CREATE  TABLE SezonFiyati (
     oda_tipi_id INT NOT NULL,
     baslangic_tarihi DATE NOT NULL,
     bitis_tarihi DATE NOT NULL,
-    gecelik_fiyat DECIMAL(10,2) NOT NULL,
+    gecelik_fiyat DECIMAL(10,2) NOT NULL CHECK (gecelik_fiyat > 0),
+    CONSTRAINT chk_sezon_tarih CHECK (bitis_tarihi >= baslangic_tarihi), -- iki kolonu karşılaştıran check tablo seviyesinde yazılıyor
     CONSTRAINT  fk_sezon_tipi FOREIGN KEY (oda_tipi_id) REFERENCES OdaTipi(id)
 ) ENGINE=InnoDB;
 
@@ -81,7 +95,7 @@ CREATE TABLE Rezervasyon (
     oda_id INT NOT NULL,
     giris_tarihi DATE NOT NULL,
     cikis_tarihi DATE NOT NULL,
-    kisi_sayisi INT NOT NULL,
+    kisi_sayisi INT NOT NULL CHECK (kisi_sayisi > 0),
     anlasilan_fiyat DECIMAL(10,2) NOT NULL, -- burda sezon fiyatı değiştikten sonra rezervasyonun fiyatı değişmesin diye.
     durum ENUM('beklemede', 'onaylı', 'iptal', 'tamamlandı') DEFAULT  'beklemede',
     olusturma_tarihi TIMESTAMP DEFAULT  CURRENT_TIMESTAMP, -- dakika saniyeye kdr tutuyor.
@@ -105,7 +119,7 @@ CREATE TABLE KonaklamaHizmeti (
     id INT AUTO_INCREMENT PRIMARY KEY,
     konaklama_id INT NOT NULL,
     ek_hizmet_id INT NOT NULL,
-    adet INT NOT NULL,
+    adet INT NOT NULL CHECK (adet > 0),
     tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_kh_konaklama FOREIGN KEY (konaklama_id) REFERENCES Konaklama(id),
     CONSTRAINT fk_kh_hizmet FOREIGN KEY (ek_hizmet_id) REFERENCES EkHizmet(id)
@@ -114,7 +128,7 @@ CREATE TABLE KonaklamaHizmeti (
 CREATE TABLE Odeme (
     id INT AUTO_INCREMENT PRIMARY KEY,
     konaklama_id INT NOT NULL,
-    tutar DECIMAL(10, 2) NOT NULL,
+    tutar DECIMAL(10, 2) NOT NULL CHECK (tutar > 0),
     odeme_turu ENUM('nakit', 'kart') NOT NULL,
     tarih TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_odeme_konaklama FOREIGN KEY (konaklama_id) REFERENCES Konaklama(id)
@@ -150,8 +164,10 @@ CREATE TABLE OzelGun(
     etkinlik_adi VARCHAR(100) NOT NULL,
     baslangic_tarihi DATE NOT NULL,
     bitis_tarihi DATE NOT NULL,
-    fiyat_carpani DECIMAL(3,2) DEFAULT  1.20,
-    aciklama VARCHAR(255)
+    fiyat_carpani DECIMAL(3,2) DEFAULT  1.20 CHECK (fiyat_carpani > 0),
+    aciklama VARCHAR(255),
+    oda_tipi_id INT NULL, -- NULL ise tüm oda tiplerine uygulanır, dolu ise sadece o oda tipine
+    CONSTRAINT fk_ozel_gun_tipi FOREIGN KEY (oda_tipi_id) REFERENCES OdaTipi(id)
 ) ENGINE=InnoDB;
 
 CREATE INDEX idx_rez_oda_tarih ON Rezervasyon (oda_id,giris_tarihi, cikis_tarihi);
