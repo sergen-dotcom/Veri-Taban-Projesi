@@ -110,7 +110,9 @@ CREATE TABLE Rezervasyon (
     anlasilan_fiyat DECIMAL(10,2) NOT NULL, -- burda sezon fiyatı değiştikten sonra rezervasyonun fiyatı değişmesin diye.
     durum ENUM('beklemede', 'onaylı', 'iptal', 'tamamlandı') DEFAULT  'beklemede',
     olusturma_tarihi TIMESTAMP DEFAULT  CURRENT_TIMESTAMP, -- dakika saniyeye kdr tutuyor.
+    indirim_orani DECIMAL(5,2) DEFAULT 0, -- rezervasyon anında uygulanan toplam indirim yüzdesi. sadakat seviyesi sonradan değişse bile aynı indirim uygulansın diye saklanıyor
     kampanya_id INT NULL, -- kampanya kodu kullanılmadıysa NULL
+    iptal_ucreti DECIMAL(10,2) DEFAULT 0, -- iptal politikasına göre kesilen ücret (sp_rezervasyon_iptal)
     CONSTRAINT fk_rez_kampanya FOREIGN KEY (kampanya_id) REFERENCES Kampanya(id),
     CONSTRAINT fk_rez_misafir FOREIGN KEY (misafir_id) REFERENCES  Misafir(id),
     CONSTRAINT fk_rez_oda FOREIGN KEY  (oda_id) REFERENCES  Oda(id)

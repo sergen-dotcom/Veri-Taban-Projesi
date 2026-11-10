@@ -80,7 +80,7 @@ CREATE PROCEDURE sp_konaklama_tutari_hesapla(
     OUT p_toplam_tutar DECIMAL(10, 2)
 )
 BEGIN
-    SELECT fn_oda_fiyati_hesapla(o.oda_tipi_id, r.giris_tarihi, r.cikis_tarihi)
+    SELECT ROUND(fn_oda_fiyati_hesapla(o.oda_tipi_id, r.giris_tarihi, r.cikis_tarihi) * (100 - r.indirim_orani) / 100, 2)
     INTO p_oda_tutari
     FROM Konaklama k
              JOIN Rezervasyon r ON k.rezervasyon_id = r.id
@@ -95,8 +95,163 @@ BEGIN
 
     SET p_toplam_tutar = p_oda_tutari + p_hizmet_tutari;
 END //
--- Konaklamanın toplam tutarını hesaplar: oda ücreti (fn_oda_fiyati_hesapla) + ek hizmetler.
+-- Konaklamanın toplam tutarını hesaplar: oda ücreti + ek hizmetler.
+-- Oda ücreti her gecenin sezon fiyatından hesaplanır, rezervasyonda indirim uygulandıysa (indirim_orani) düşülür.
 -- Kullanım: CALL sp_konaklama_tutari_hesapla(1, @oda, @hizmet, @toplam); SELECT @oda, @hizmet, @toplam;
+
+
+DROP PROCEDURE IF EXISTS sp_fiyat_teklifi//
+CREATE PROCEDURE sp_fiyat_teklifi(
+    IN  p_oda_id INT,
+    IN  p_giris_tarihi DATE,
+    IN  p_cikis_tarihi DATE,
+    IN  p_misafir_id INT,
+    IN  p_kampanya_kodu VARCHAR(30), -- kod girilmediyse NULL
+    OUT p_ham_fiyat DECIMAL(10, 2),
+    OUT p_indirim_orani DECIMAL(5, 2),
+    OUT p_toplam_fiyat DECIMAL(10, 2),
+    OUT p_kampanya_id INT
+)
+BEGIN
+    DECLARE v_erken_rezervasyon DECIMAL(5, 2) DEFAULT IF(DATEDIFF(p_giris_tarihi, CURDATE()) >= 60, 15, 0); -- 60 gün önceden %15
+    DECLARE v_uzun_konaklama DECIMAL(5, 2) DEFAULT IF(DATEDIFF(p_cikis_tarihi, p_giris_tarihi) >= 7, 10, 0); -- 7 gece ve üstü %10
+    DECLARE v_sadakat DECIMAL(5, 2) DEFAULT 0;
+    DECLARE v_kampanya DECIMAL(5, 2) DEFAULT 0;
+
+    SELECT fn_oda_fiyati_hesapla(oda_tipi_id, p_giris_tarihi, p_cikis_tarihi)
+    INTO p_ham_fiyat
+    FROM Oda
+    WHERE id = p_oda_id;
+
+    SELECT indirim_orani INTO v_sadakat FROM v_misafir_sadakat WHERE misafir_id = p_misafir_id;
+
+    IF p_kampanya_kodu IS NOT NULL THEN
+        SELECT id, indirim_orani
+        INTO p_kampanya_id, v_kampanya
+        FROM Kampanya
+        WHERE kod = p_kampanya_kodu
+          AND CURDATE() BETWEEN baslangic_tarihi AND bitis_tarihi
+          AND kullanim_sayisi < kullanim_limiti;
+
+        IF p_kampanya_id IS NULL THEN
+            SIGNAL SQLSTATE '45000'
+                SET MESSAGE_TEXT = 'HATA: Kampanya kodu geçersiz, süresi dolmuş veya kullanım limiti dolmuş.';
+        END IF;
+    END IF;
+
+    SET p_indirim_orani = LEAST(v_erken_rezervasyon + v_uzun_konaklama + v_sadakat + v_kampanya, 50); -- toplam indirim en fazla %50
+    SET p_toplam_fiyat = ROUND(p_ham_fiyat * (100 - p_indirim_orani) / 100, 2);
+END //
+-- Rezervasyon yapılmadan önce misafire gösterilecek fiyatı hesaplar.
+-- İndirimler toplanır: erken rezervasyon + uzun konaklama + sadakat seviyesi (v_misafir_sadakat) + kampanya kodu.
+-- Kullanım: CALL sp_fiyat_teklifi(4, '2027-03-10', '2027-03-17', 6, 'KTU2026', @ham, @oran, @toplam, @kampanya); SELECT @ham, @oran, @toplam;
+
+
+DROP PROCEDURE IF EXISTS sp_rezervasyon_olustur//
+CREATE PROCEDURE sp_rezervasyon_olustur(
+    IN p_misafir_id INT,
+    IN p_oda_id INT,
+    IN p_giris_tarihi DATE,
+    IN p_cikis_tarihi DATE,
+    IN p_kisi_sayisi INT,
+    IN p_kampanya_kodu VARCHAR(30)
+)
+BEGIN
+    DECLARE v_oda_id INT;
+    DECLARE v_rezervasyon_id INT;
+    DECLARE v_ham_fiyat, v_toplam_fiyat DECIMAL(10, 2);
+    DECLARE v_indirim_orani DECIMAL(5, 2);
+    DECLARE v_kampanya_id INT;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_cikis_tarihi <= p_giris_tarihi THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'HATA: Çıkış tarihi giriş tarihinden sonra olmalıdır.';
+    END IF;
+
+    START TRANSACTION;
+
+    SELECT id INTO v_oda_id FROM Oda WHERE id = p_oda_id FOR UPDATE;
+    -- odanın satırını kilitliyoruz: aynı odaya aynı anda iki rezervasyon gelirse ikincisi birincinin bitmesini bekler,
+    -- sonra çakışma trigger'ı ilk rezervasyonu görüp ikinciyi engeller. kilit olmasa ikisi de aynı anda kontrolden geçebilirdi.
+
+    CALL sp_fiyat_teklifi(p_oda_id, p_giris_tarihi, p_cikis_tarihi, p_misafir_id, p_kampanya_kodu,
+                          v_ham_fiyat, v_indirim_orani, v_toplam_fiyat, v_kampanya_id);
+
+    INSERT INTO Rezervasyon (misafir_id, oda_id, giris_tarihi, cikis_tarihi, kisi_sayisi, anlasilan_fiyat, indirim_orani, kampanya_id)
+    VALUES (p_misafir_id, p_oda_id, p_giris_tarihi, p_cikis_tarihi, p_kisi_sayisi,
+            ROUND(v_toplam_fiyat / DATEDIFF(p_cikis_tarihi, p_giris_tarihi), 2), v_indirim_orani, v_kampanya_id);
+    -- çakışma, kapasite ve kampanya trigger'ları burda çalışır, biri hata verirse her şey geri alınır
+
+    SET v_rezervasyon_id = LAST_INSERT_ID();
+
+    COMMIT;
+
+    SELECT v_rezervasyon_id AS rezervasyon_id, v_ham_fiyat AS ham_fiyat, v_indirim_orani AS indirim_orani, v_toplam_fiyat AS toplam_fiyat;
+END //
+-- Yeni rezervasyonu oluşturur. anlasilan_fiyat indirimli gecelik ortalama fiyattır, indirim_orani check-out'ta aynı indirimin uygulanması için saklanır.
+
+
+DROP PROCEDURE IF EXISTS sp_rezervasyon_iptal//
+CREATE PROCEDURE sp_rezervasyon_iptal(
+    IN p_rezervasyon_id INT
+)
+BEGIN
+    DECLARE v_durum VARCHAR(20);
+    DECLARE v_giris DATE;
+    DECLARE v_kampanya_id INT;
+    DECLARE v_tutar DECIMAL(10, 2);
+    DECLARE v_kalan_gun INT;
+    DECLARE v_iptal_ucreti DECIMAL(10, 2);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+    SELECT r.durum, r.giris_tarihi, r.kampanya_id,
+           ROUND(fn_oda_fiyati_hesapla(o.oda_tipi_id, r.giris_tarihi, r.cikis_tarihi) * (100 - r.indirim_orani) / 100, 2)
+    INTO v_durum, v_giris, v_kampanya_id, v_tutar
+    FROM Rezervasyon r
+             JOIN Oda o ON r.oda_id = o.id
+    WHERE r.id = p_rezervasyon_id
+        FOR UPDATE;
+
+    IF v_durum IS NULL OR v_durum NOT IN ('beklemede', 'onaylı')
+        OR EXISTS (SELECT 1 FROM Konaklama WHERE rezervasyon_id = p_rezervasyon_id) THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'HATA: Rezervasyon bulunamadı, zaten iptal/tamamlanmış ya da check-in yapılmış.';
+    END IF;
+
+    SET v_kalan_gun = DATEDIFF(v_giris, CURDATE());
+    SET v_iptal_ucreti = CASE
+                             WHEN v_kalan_gun > 7 THEN 0             -- 7 günden fazla varsa ücretsiz
+                             WHEN v_kalan_gun >= 3 THEN v_tutar / 2  -- 3-7 gün arası %50
+                             ELSE v_tutar                            -- 3 günden az kaldıysa tamamı
+        END;
+
+    UPDATE Rezervasyon
+    SET durum = 'iptal', iptal_ucreti = v_iptal_ucreti
+    WHERE id = p_rezervasyon_id; -- trg_rezervasyon_islem_log iptali IslemLog'a yazar
+
+    UPDATE Kampanya
+    SET kullanim_sayisi = kullanim_sayisi - 1
+    WHERE id = v_kampanya_id; -- kampanya kodu kullanıldıysa hakkı geri verilir
+
+    COMMIT;
+
+    SELECT p_rezervasyon_id AS rezervasyon_id, v_kalan_gun AS girise_kalan_gun, v_iptal_ucreti AS iptal_ucreti;
+END //
+-- Rezervasyonu iptal politikasına göre iptal eder: iptal ücretini hesaplar, durumu günceller, kampanya hakkını geri verir.
+-- İki tablo birlikte güncellendiği için tek transaction içinde yapılıyor.
 
 
 DROP PROCEDURE IF EXISTS sp_aylik_doluluk_gelir_raporu//
@@ -128,12 +283,14 @@ END //
 DROP PROCEDURE IF EXISTS sp_checkout//
 CREATE PROCEDURE sp_checkout(
     IN p_konaklama_id INT,
-    IN p_odeme_turu VARCHAR(10)
+    IN p_odeme_turu VARCHAR(10),
+    IN p_kullanilacak_puan INT -- puan kullanılmayacaksa 0 (1 puan = 1 TL)
 )
 BEGIN
     DECLARE v_rezervasyon_id INT;
     DECLARE v_gercek_cikis TIMESTAMP;
     DECLARE v_oda_tutari, v_hizmet_tutari, v_toplam_tutar DECIMAL(10, 2);
+    DECLARE v_puan INT;
 
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
@@ -160,22 +317,34 @@ BEGIN
     -- 2. toplam tutarı hesapla
     CALL sp_konaklama_tutari_hesapla(p_konaklama_id, v_oda_tutari, v_hizmet_tutari, v_toplam_tutar);
 
-    -- 3. ödemeyi kaydet (trg_misafir_puan_artir ve trg_odeme_ekleme_log çalışır)
+    -- 3. puan kullanıldıysa misafirin bakiyesinden düş (trg_misafir_puan_kontrol_ve_log yetersiz puanı engeller ve harcamayı loglar)
+    SET v_puan = LEAST(IFNULL(p_kullanilacak_puan, 0), FLOOR(v_toplam_tutar)); -- toplam tutardan fazla puan kullanılamaz
+
+    UPDATE Misafir m
+        JOIN Rezervasyon r ON r.misafir_id = m.id
+    SET m.toplam_puan = m.toplam_puan - v_puan
+    WHERE r.id = v_rezervasyon_id
+      AND v_puan > 0;
+
+    -- 4. kalan tutarın ödemesini kaydet (trg_misafir_puan_artir ve trg_odeme_ekleme_log çalışır)
     IF p_odeme_turu NOT IN ('nakit', 'kart') THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = 'HATA: Geçersiz ödeme türü. İşlem geri alındı.';
     END IF; -- bilerek 1. adımdan sonra kontrol ediliyor, ROLLBACK testinde 1. adımın da geri alındığı görülsün diye
 
-    INSERT INTO Odeme (konaklama_id, tutar, odeme_turu) VALUES (p_konaklama_id, v_toplam_tutar, p_odeme_turu);
+    IF v_toplam_tutar - v_puan > 0 THEN
+        INSERT INTO Odeme (konaklama_id, tutar, odeme_turu) VALUES (p_konaklama_id, v_toplam_tutar - v_puan, p_odeme_turu);
+    END IF; -- tamamı puanla ödendiyse ödeme kaydı açılmaz
 
-    -- 4. rezervasyonu tamamla (trg_rezervasyon_islem_log çalışır)
+    -- 5. rezervasyonu tamamla (trg_rezervasyon_islem_log çalışır)
     UPDATE Rezervasyon SET durum = 'tamamlandı' WHERE id = v_rezervasyon_id;
 
     COMMIT;
 
-    SELECT v_oda_tutari AS oda_tutari, v_hizmet_tutari AS hizmet_tutari, v_toplam_tutar AS toplam_tutar;
+    SELECT v_oda_tutari AS oda_tutari, v_hizmet_tutari AS hizmet_tutari, v_toplam_tutar AS toplam_tutar,
+           v_puan AS kullanilan_puan, v_toplam_tutar - v_puan AS odenen_tutar;
 END //
--- Check-out işlemini tek bir transaction içinde yapar: konaklama kapatılır, ödeme alınır, oda durumu güncellenir, rezervasyon tamamlanır.
+-- Check-out işlemini tek bir transaction içinde yapar: konaklama kapatılır, varsa puan düşülür, ödeme alınır, oda durumu güncellenir, rezervasyon tamamlanır.
 -- Herhangi bir adım başarısız olursa hepsi ROLLBACK ile geri alınır.
 
 DELIMITER ;
@@ -196,18 +365,39 @@ DELIMITER ;
 -- CALL sp_konaklama_tutari_hesapla(4, @oda, @hizmet, @toplam);
 -- SELECT @oda AS oda_tutari, @hizmet AS hizmet_tutari, @toplam AS toplam_tutar;
 
+-- 3b. Fiyat teklifi (Hakan Aydın Platin %15 + kampanya %10 + uzun konaklama %10)
+-- CALL sp_fiyat_teklifi(4, '2027-03-10', '2027-03-17', 6, 'KTU2026', @ham, @oran, @toplam, @kampanya);
+-- SELECT @ham AS ham_fiyat, @oran AS indirim_orani, @toplam AS toplam_fiyat, @kampanya AS kampanya_id;
+
+-- 3c. Rezervasyon oluşturma (indirim oranı saklanır, kampanya kullanım sayısı artar)
+-- CALL sp_rezervasyon_olustur(6, 4, '2027-03-10', '2027-03-17', 2, 'KTU2026');
+
+-- 3d. Aynı odaya çakışan rezervasyon denemesi (trigger engeller, hiçbir değişiklik kalmaz)
+-- CALL sp_rezervasyon_olustur(7, 4, '2027-03-12', '2027-03-14', 2, NULL);
+
+-- 3e. İptal politikası: 7 günden fazla varsa ücretsiz, 3-7 gün %50, 3 günden az tamamı (3c'de oluşan 213 numaralı rezervasyonu iptal eder)
+-- CALL sp_rezervasyon_iptal(213);
+-- SELECT id, durum, iptal_ucreti FROM Rezervasyon ORDER BY id DESC LIMIT 1;
+
 -- 4. Aylık doluluk ve gelir raporu
 -- CALL sp_aylik_doluluk_gelir_raporu(2026, 7);
 
 -- 5. Başarılı check-out (oda 102 -> temizlikte, ödeme ve log kayıtları oluşur)
--- CALL sp_checkout(1, 'kart');
+-- CALL sp_checkout(1, 'kart', 0);
 -- SELECT oda_no, durum FROM Oda WHERE oda_no = '102';
 -- SELECT * FROM IslemLog ORDER BY id DESC LIMIT 5;
 
 -- 6. ROLLBACK testi: geçersiz ödeme türü, hiçbir değişiklik kalmamalı (oda 202 hala 'dolu', gercek_cikis hala NULL)
--- CALL sp_checkout(2, 'bitcoin');
+-- CALL sp_checkout(2, 'bitcoin', 0);
 -- SELECT id, gercek_cikis FROM Konaklama WHERE id = 2;
 -- SELECT oda_no, durum FROM Oda WHERE oda_no = '202';
 
 -- 7. Aynı konaklamaya ikinci kez check-out denemesi
--- CALL sp_checkout(1, 'nakit');
+-- CALL sp_checkout(1, 'nakit', 0);
+
+-- 8. Puanla check-out (Hakan Aydın 1000 puan kullanır, kalan tutar karttan alınır, harcanan puan IslemLog'a yazılır)
+-- CALL sp_checkout(4, 'kart', 1000);
+-- SELECT toplam_puan FROM Misafir WHERE id = 6;
+
+-- 9. Yetersiz puan: misafirin puanından fazlası kullanılamaz, check-out tamamen geri alınır
+-- CALL sp_checkout(3, 'kart', 99999);
