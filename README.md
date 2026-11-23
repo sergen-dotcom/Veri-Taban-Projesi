@@ -133,10 +133,12 @@ Aşağıdaki komutu çalıştırarak MySQL 8 konteynerini ayağa kaldırın:
 ```bash
 docker run -d \
   --name hotel-db \
-  -e MYSQL_ROOT_PASSWORD=hakanaydin123 \
+  -e MYSQL_ROOT_PASSWORD=<sifreniz> \
   -p 3306:3306 \
   mysql:8
 ```
+
+> `<sifreniz>` yerine kendi belirlediğiniz şifreyi yazın. Bu şifre, `.env` dosyanızdaki `DB_PASSWORD` değeriyle aynı olmalıdır.
 
 ### 3. SQL Şema ve Tabloları Oluşturma
 MySQL istemcisine bağlandıktan sonra şema dosyasını çalıştırın:
