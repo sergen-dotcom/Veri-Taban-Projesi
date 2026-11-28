@@ -49,6 +49,16 @@ public class Rezervasyon {
     @Column(name="olusturma_tarihi" , updatable = false)
     private LocalDateTime olusturmaTarihi;
 
+    @Column(name = "indirim_orani", precision = 5, scale = 2) //rezervasyon anında uygulanan toplam indirim yüzdesi
+    private BigDecimal indirimOrani = BigDecimal.ZERO;
+
+    @Column(name = "iptal_ucreti", precision = 10, scale = 2) //iptal politikasına göre ücret
+    private BigDecimal iptalUcreti = BigDecimal.ZERO;
+
+    @ManyToOne(fetch = FetchType.LAZY)//kampanya verisini yalnızca ihtiyaç duyulduğunda (LAZY) yükler ilişkiyi kampanya_id üzerinden kurar.
+    @JoinColumn(name = "kampanya_id") //kampanya kodu kullanılmadıysa NULL.
+    private Kampanya kampanya;
+
     @PrePersist// veritabanına INSERT edilirken çalışır ve anlık zamanı kullanır. 
     protected void onCreate(){
         this.olusturmaTarihi=LocalDateTime.now();

@@ -35,6 +35,10 @@ public class OzelGun {
     @Column(name = "aciklama" , length = 255)//etkinliğe dair açıklama
     private String aciklama;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "oda_tipi_id") // NULL ise tüm oda tiplerine uygulanır doluysa sadece o oda tipine uygulanır.
+    private OdaTipi odaTipi;
+
     // Özel constructor
     public OzelGun(String etkinlikAdi , LocalDate baslangicTarihi , LocalDate bitisTarihi , BigDecimal fiyatCarpani , String aciklama){
         this.etkinlikAdi=etkinlikAdi;

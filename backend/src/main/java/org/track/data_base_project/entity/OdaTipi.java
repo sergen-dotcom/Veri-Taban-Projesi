@@ -6,6 +6,8 @@ import lombok.NoArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
 import java.math.BigDecimal;
+import java.util.HashSet;//bir oda tipine ait olanakların tekrar etmesini önler.
+import java.util.Set;//değişkeninin veri tipini (arayüzünü) tanımlayabilmeniz için kullandık.
 
 @Entity 
 @Getter 
@@ -31,6 +33,14 @@ public class OdaTipi {
     
     @Column(name = "temel_fiyat" , nullable = false , precision = 10 , scale = 2) // 'precision = 10' bir fiyatta en fazla 10 basamak olabilir . 'scale = 2' ise virgülden sonra ki 2 basamak yani kuruş
     private BigDecimal temelFiyat; // double yerine BigDecimal kullanma nedeni BigDecimalin daha hassas olduğu için
+
+    @ManyToMany(fetch = FetchType.LAZY)//OdaTipi ile Olanak arasındaki Many-to-Many ilişkiyi OdaTipiOlanak ara tablosuyla kurduk.
+    @JoinTable(
+    name = "OdaTipiOlanak",
+    joinColumns = @JoinColumn(name = "oda_tipi_id"),
+    inverseJoinColumns = @JoinColumn(name = "olanak_id")
+    )
+    private Set<Olanak> olanaklar = new HashSet<>();//tekrarlı kayıtları önler
 
     // Özel constructor (id hariç, yeni kullanıcı oluştururken)
     public OdaTipi(String ad , Integer kapasite , String aciklama , BigDecimal temelFiyat){
